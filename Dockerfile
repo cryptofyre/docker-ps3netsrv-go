@@ -1,164 +1,49 @@
-#
-# ps3netsrv Dockerfile
-#
-# https://github.com/shawly/docker-ps3netsrv
-#
+ARG GO_VERSION=1.25.1
 
-# Set alpine version
-ARG ALPINE_VERSION=3.21
+FROM golang:${GO_VERSION}-alpine AS builder
 
-# Set vars for s6 overlay
-ARG S6_OVERLAY_VERSION=v2.2.0.3
-ARG S6_OVERLAY_BASE_URL=https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG PS3NETSRV_GO_REPO=https://github.com/xakep666/ps3netsrv-go.git
+ARG PS3NETSRV_GO_REF=main
 
-# Set PS3NETSRV vars
-ARG PS3NETSRV_REPO=https://github.com/aldostools/webMAN-MOD.git
-ARG PS3NETSRV_DIR=_Projects_/ps3netsrv
-ARG PS3NETSRV_REF=master
-ARG BUILD_FROM_GIT=false
+WORKDIR /src
 
-ARG PS3NETSRV_RELEASE=1.47.48
-ARG PS3NETSRV_VERSION=20250501
-ARG PS3NETSRV_URL=https://github.com/aldostools/webMAN-MOD/releases/download/${PS3NETSRV_RELEASE}/ps3netsrv_${PS3NETSRV_VERSION}.zip
+RUN apk add --no-cache git ca-certificates && \
+    update-ca-certificates
 
-# Set base images with s6 overlay download variable (necessary for multi-arch building via GitHub workflows)
-FROM alpine:${ALPINE_VERSION} as alpine-amd64
+RUN git clone --depth 1 --branch "${PS3NETSRV_GO_REF}" "${PS3NETSRV_GO_REPO}" . && \
+    go mod download
 
-ARG S6_OVERLAY_VERSION
-ARG S6_OVERLAY_BASE_URL
-ENV S6_OVERLAY_RELEASE="${S6_OVERLAY_BASE_URL}/s6-overlay-amd64.tar.gz"
+ENV CGO_ENABLED=0
+RUN GOOS="${TARGETOS:-linux}" \
+    GOARCH="${TARGETARCH}" \
+    GOARM="${TARGETVARIANT#v}" \
+    go build -trimpath -ldflags="-s -w -X main.Version=${PS3NETSRV_GO_REF}" \
+    -o /out/ps3netsrv-go ./cmd/ps3netsrv-go
 
-FROM alpine:${ALPINE_VERSION} as alpine-386
+FROM alpine:3.21
 
-ARG S6_OVERLAY_VERSION
-ARG S6_OVERLAY_BASE_URL
-ENV S6_OVERLAY_RELEASE="${S6_OVERLAY_BASE_URL}/s6-overlay-x86.tar.gz"
+WORKDIR /srv/ps3data
 
-FROM alpine:${ALPINE_VERSION} as alpine-armv6
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -g 1000 ps3netsrv && \
+    adduser -D -H -u 1000 -G ps3netsrv ps3netsrv && \
+    chown ps3netsrv:ps3netsrv /srv/ps3data
 
-ARG S6_OVERLAY_VERSION
-ARG S6_OVERLAY_BASE_URL
-ENV S6_OVERLAY_RELEASE="${S6_OVERLAY_BASE_URL}/s6-overlay-armhf.tar.gz"
+COPY --from=builder /out/ps3netsrv-go /usr/local/bin/ps3netsrv-go
 
-FROM alpine:${ALPINE_VERSION} as alpine-armv7
+ENV PS3NETSRV_ROOT=/srv/ps3data \
+    PS3NETSRV_LISTEN_ADDR=0.0.0.0:38008 \
+    PS3NETSRV_STRICT_ROOT=true \
+    PS3NETSRV_ALLOW_WRITE=true
 
-ARG S6_OVERLAY_VERSION
-ARG S6_OVERLAY_BASE_URL
-ENV S6_OVERLAY_RELEASE="${S6_OVERLAY_BASE_URL}/s6-overlay-arm.tar.gz"
+VOLUME ["/srv/ps3data"]
 
-FROM alpine:${ALPINE_VERSION} as alpine-arm64
-
-ARG S6_OVERLAY_VERSION
-ARG S6_OVERLAY_BASE_URL
-ENV S6_OVERLAY_RELEASE="${S6_OVERLAY_BASE_URL}/s6-overlay-aarch64.tar.gz"
-
-FROM alpine:${ALPINE_VERSION} as alpine-ppc64le
-
-ARG S6_OVERLAY_VERSION
-ARG S6_OVERLAY_BASE_URL
-ENV S6_OVERLAY_RELEASE="${S6_OVERLAY_BASE_URL}/s6-overlay-ppc64le.tar.gz"
-
-# Build ps3netsrv:master
-FROM alpine:${ALPINE_VERSION} as builder
-
-ARG PS3NETSRV_REPO
-ARG PS3NETSRV_DIR
-ARG PS3NETSRV_REF
-ARG PS3NETSRV_RELEASE
-ARG PS3NETSRV_VERSION
-ARG PS3NETSRV_URL
-ARG BUILD_FROM_GIT
-
-# Change working dir
-WORKDIR /tmp
-
-# Install deps and build binary
-RUN \
-  set -ex && \
-  echo "Installing build dependencies..." && \
-  apk add --update --no-cache \
-    curl \
-    git \
-    build-base \
-    meson \
-    mbedtls-dev \
-    musl \
-    musl-dev \
-    musl-dbg \
-    musl-utils \
-    tar \
-    unzip
-
-RUN \
-  [ "${BUILD_FROM_GIT:-}" != "true" ] || (echo "Building ps3netsrv from git repo (ref: ${PS3NETSRV_REF})..." && \
-    git clone --depth 1 "${PS3NETSRV_REPO}" --branch "${PS3NETSRV_REF}" repo && \
-    cd /tmp/repo/${PS3NETSRV_DIR} && \
-    # Patch off64_t to off_t for Alpine 3.21+ \
-    sed -i 's/\boff64_t\b/off_t/g' include/*.* && \
-    sed -i 's/\boff64_t\b/off_t/g' src/*.* && \
-    meson build --buildtype=release && \
-    ninja -C build/ && \
-    mkdir -p /tmp/ps3netsrv-bin && \
-    cp -v /tmp/repo/${PS3NETSRV_DIR}/build/ps3netsrv /tmp/ps3netsrv-bin/)
-
-RUN \
-  [ "${BUILD_FROM_GIT:-}" == "true" ] || (echo "Building ps3netsrv from release (ps3netsrv_${PS3NETSRV_VERSION}.zip)..." && \
-    curl -sL --output /tmp/ps3netsrv.zip "${PS3NETSRV_URL}" && \
-    unzip /tmp/ps3netsrv.zip -d /tmp && \
-    makefile_path=$(find "/tmp" -type f -maxdepth 3 -iname "Makefile") && \
-    src_dir=$(dirname "$makefile_path") && \
-    cd "${src_dir}" && \
-    # Patch off64_t to off_t for Alpine 3.21+ \
-    sed -i 's/\boff64_t\b/off_t/g' include/*.* && \
-    sed -i 's/\boff64_t\b/off_t/g' src/*.* && \
-    meson build --buildtype=release && \
-    ninja -C build/ && \
-    mkdir -p /tmp/ps3netsrv-bin && \
-    cp -v build/ps3netsrv /tmp/ps3netsrv-bin/)
-
-# Runtime container
-FROM alpine-${TARGETARCH:-amd64}${TARGETVARIANT}
-
-# Download s6 overlay
-ADD ${S6_OVERLAY_RELEASE} /tmp/s6overlay.tar.gz
-
-# Copy binary from build container
-COPY --from=builder /tmp/ps3netsrv-bin/ps3netsrv /usr/local/bin/ps3netsrv
-
-# Install runtime deps and add users
-RUN \
-  set -ex && \
-  echo "Installing runtime dependencies..." && \
-  apk add --no-cache \
-    bash \
-    coreutils \
-    shadow \
-    tzdata \
-    libstdc++ \
-    musl \
-    musl-utils \
-    mbedtls && \
-  echo "Extracting s6 overlay..." && \
-    tar xzf /tmp/s6overlay.tar.gz -C / && \
-  echo "Creating ps3netsrv user..." && \
-    useradd -u 1000 -U -M -s /bin/false ps3netsrv && \
-    usermod -G users ps3netsrv && \
-    mkdir -p /var/log/ps3netsrv && \
-    chown -R nobody:nogroup /var/log/ps3netsrv && \
-  echo "Cleaning up temp directory..." && \
-    rm -rf /tmp/*
-
-# Add files
-COPY rootfs/ /
-
-ENV PS3NETSRV_PORT=38008 \
-    PS3NETSRV_WHITELIST=
-
-# Define mountable directories
-VOLUME ["/games"]
-
-# Expose ports
 EXPOSE 38008
 
-# Start s6
-ENTRYPOINT ["/init"]
+USER ps3netsrv:ps3netsrv
+
+ENTRYPOINT ["ps3netsrv-go"]
+CMD ["server"]

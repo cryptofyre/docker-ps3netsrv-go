@@ -1,322 +1,79 @@
-# Docker container for ps3netsrv (or ps3netsvr)
+# Docker image for ps3netsrv-go
 
-[![Docker Automated build](https://img.shields.io/badge/docker%20build-automated-brightgreen)](https://github.com/shawly/docker-ps3netsrv/actions) [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/shawly/docker-ps3netsrv/Docker)](https://github.com/shawly/docker-ps3netsrv/actions) [![Docker Pulls](https://img.shields.io/docker/pulls/shawly/ps3netsrv)](https://hub.docker.com/r/shawly/ps3netsrv) [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/shawly/ps3netsrv/latest)](https://hub.docker.com/r/shawly/ps3netsrv) [![GitHub Release](https://img.shields.io/github/release/shawly/docker-ps3netsrv.svg)](https://github.com/shawly/docker-ps3netsrv/releases/latest)
+[![Build status](https://github.com/cryptofyre/docker-ps3netsrv-go/actions/workflows/docker.yml/badge.svg?branch=main)](https://github.com/cryptofyre/docker-ps3netsrv-go/actions/workflows/docker.yml)
 
-This is a Docker container for ps3netsrv (or ps3netsvr).
+Image: `ghcr.io/cryptofyre/docker-ps3netsrv-go`
 
----
+Container image for [xakep666/ps3netsrv-go](https://github.com/xakep666/ps3netsrv-go), a Go reimplementation of ps3netsrv used by WebMAN/IrisMAN to serve PS3 content over the network.
 
-[![ps3netsrv logo](https://images.weserv.nl/?url=raw.githubusercontent.com/shawly/docker-ps3netsrv/master/ps3netsrv-icon.png&w=200)](https://github.com/aldostools/webMAN-MOD)[![ps3netsrv](https://dummyimage.com/400x110/ffffff/575757&text=ps3netsrv)](https://github.com/aldostools/webMAN-MOD)
+This fork builds the upstream Go binary directly (no s6 overlay, no legacy C code) and publishes multi-arch images to GHCR.
 
-ps3netsrv for WebMAN-MOD by [aldostools](https://github.com/aldostools). Binaries built from the latest sources.
+## What’s inside
+- Built from upstream `ps3netsrv-go` (default ref: `main`; tag builds use the tag).
+- Static binary (`CGO_ENABLED=0`) with defaults tuned for container use.
+- Runs as non-root user `ps3netsrv` (uid/gid 1000) by default.
+- Multi-arch: `linux/amd64`, `linux/arm64`, `linux/arm/v7`.
 
----
+## Tags
+- `latest` – default branch build
+- `edge` – same as `latest` (kept for parity)
+- `v*` – published from matching git tags in this repo
 
-## Table of Content
+Images are published to `ghcr.io/cryptofyre/docker-ps3netsrv-go`.
 
-- [Docker container for ps3netsrv](#docker-container-for-ps3netsrv)
-  - [Table of Content](#table-of-content)
-  - [Supported tags](#supported-tags)
-  - [Image Variants](#image-variants)
-  - [Supported Architectures](#supported-architectures)
-  - [Quick Start](#quick-start)
-  - [Usage](#usage)
-    - [Environment Variables](#environment-variables)
-    - [Data Volumes](#data-volumes)
-    - [Ports](#ports)
-    - [Changing Parameters of a Running Container](#changing-parameters-of-a-running-container)
-  - [Docker Compose File](#docker-compose-file)
-  - [Docker Image Update](#docker-image-update)
-  - [User/Group IDs](#usergroup-ids)
-  - [Troubleshooting](#troubleshooting)
-  - [Support or Contact](#support-or-contact)
-
-## Supported tags
-
-<!-- supported tags will be auto updated through workflows! -->
-- `edge`, `edge-20250501` <!-- edge tag -->
-- `latest`, `v1`, `v1.11`, `v1.11.0`, `20250501` <!-- latest tag -->
-
-## Image Variants
-
-This image comes in two different variants.
-
-### `shawly/ps3netsrv:<version>`
-
-This image represents a stable or considered "working" build of ps3netsrv and should be preferred.  
-It is built from the latest released version, found in the webMAN-MOD releases.
-
-If you want a specific ps3netsrv version, you can use the tag of the version e.g. `20220813`.
-
-### `shawly/ps3netsrv:edge-<version>`
-
-This image represents a development state of this repo. It contains the latest features but is not considered stable, it can contain bugs and breaking changes.  
-If you are not sure what to choose, use the `latest` image or a version like `v1` or `20220813`.  
-This image will be built from the latest release found in the webMAN-MOD releases as well, but it will be bleeding edge, meaning it will be updated as soon as a new release is found.
-
-## Supported Architectures
-
-The architectures supported by this image are:
-
-| Architecture | Status                                                          |
-| :----------: | --------------------------------------------------------------- |
-|    x86-64    | working                                                         |
-|     x86      | untested                                                        |
-|    arm64     | [working](https://github.com/shawly/docker-ps3netsrv/issues/19) |
-|    armv7     | untested                                                        |
-|    armhf     | working                                                         |
-|  ~ppc64le~   | dropped                                                         |
-
-_I'm declaring the arm images as **untested** because I only own an older first generation RaspberryPi Model B+ I can't properly test the image on other devices, technically it should work on all RaspberryPi models and similar SoCs. While emulating the architecture with qemu works and can be used for testing, I can't guarantee that there will be no issues, just try it._
-
-_I would be glad if you could [create a small report](https://github.com/shawly/docker-ps3netsrv/issues/new/choose) (choose ARM Compatibility Report) to tell me which device you've tested and if it's working or not._
-
-## Quick Start
-
-**NOTE**: The Docker command provided in this quick start is given as an example
-and parameters should be adjusted to your need.
-
-Launch the ps3netsrv docker container with the following command:
-
-```
+## Quick start
+```bash
 docker run -d \
-    --name=ps3netsrv \
-    -p 38008:38008 \
-    -v $HOME/ps3games:/games:rw \
-    shawly/ps3netsrv
+  --name=ps3netsrv-go \
+  -p 38008:38008 \
+  -v /path/to/games:/srv/ps3data \
+  ghcr.io/cryptofyre/docker-ps3netsrv-go:latest
 ```
 
-Where:
+## Configuration
+The container entrypoint is `ps3netsrv-go server`. Common settings (all are passed through to upstream and also work via env or flags):
 
-- `$HOME/ps3games`: This location contains files from your host that need to be accessible by the application.
+| Env var | Description | Default |
+| --- | --- | --- |
+| `PS3NETSRV_ROOT` | Root directory served to clients | `/srv/ps3data` |
+| `PS3NETSRV_LISTEN_ADDR` | Listen address/port | `0.0.0.0:38008` |
+| `PS3NETSRV_ALLOW_WRITE` | Enable write operations | `true` |
+| `PS3NETSRV_STRICT_ROOT` | Protect against path traversal/symlinks | `true` |
+| `PS3NETSRV_CLIENT_WHITELIST` | Optional IP whitelist | *(empty)* |
+| `PS3NETSRV_MAX_CLIENTS` | Limit concurrent clients (0 = no limit) | `0` |
+| `PS3NETSRV_READ_TIMEOUT` | Command timeout (e.g. `30s`, `0` to disable) | `0` |
+| `PS3NETSRV_DEBUG` / `PS3NETSRV_JSON_LOG` | Verbose / JSON logging | `false` |
 
-## Usage
+The upstream also supports a config file (`config.ini`) discovered as described in the upstream README.
 
-```
-docker run [-d] \
-    --name=ps3netsrv \
-    [-e <VARIABLE_NAME>=<VALUE>]... \
-    [-v <HOST_DIR>:<CONTAINER_DIR>[:PERMISSIONS]]... \
-    [-p <HOST_PORT>:<CONTAINER_PORT>]... \
-    shawly/ps3netsrv
-```
+## Volumes and ports
+- Volume: `/srv/ps3data` (map your games here; include `PS3ISO`/`GAMES` folders, etc.).
+- Port: `38008/TCP` (map with `-p 38008:38008` or change `PS3NETSRV_LISTEN_ADDR`).
 
-| Parameter | Description                                                                                                                                              |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| -d        | Run the container in background. If not set, the container runs in foreground.                                                                           |
-| -e        | Pass an environment variable to the container. See the [Environment Variables](#environment-variables) section for more details.                         |
-| -v        | Set a volume mapping (allows to share a folder/file between the host and the container). See the [Data Volumes](#data-volumes) section for more details. |
-| -p        | Set a network port mapping (exposes an internal container port to the host). See the [Ports](#ports) section for more details.                           |
-
-### Environment Variables
-
-To customize some properties of the container, the following environment
-variables can be passed via the `-e` parameter (one for each variable). Value
-of this parameter has the format `<VARIABLE_NAME>=<VALUE>`.
-
-| Variable              | Description                                                                                                                         | Default   |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `USER_ID`             | ID of the user the application runs as. See [User/Group IDs](#usergroup-ids) to better understand when this should be set.          | `1000`    |
-| `GROUP_ID`            | ID of the group the application runs as. See [User/Group IDs](#usergroup-ids) to better understand when this should be set.         | `1000`    |
-| `PS3NETSRV_PORT`      | Port used by ps3netsrv. You only need to change this when using network_mode host, otherwise you can just remap ports using Docker! | `38008`   |
-| `PS3NETSRV_WHITELIST` | Whitelist IPs e.g. `192.168.1.*` or `192.168.1.10-192.168.1.200`, this probably only works with network_mode host!                  | ``        |
-| `TZ`                  | [TimeZone] of the container. Timezone can also be set by mapping `/etc/localtime` between the host and the container.               | `Etc/UTC` |
-
-### Data Volumes
-
-The following table describes data volumes used by the container. The mappings
-are set via the `-v` parameter. Each mapping is specified with the following
-format: `<HOST_DIR>:<CONTAINER_DIR>[:PERMISSIONS]`.
-
-| Container path | Permissions | Description                                       |
-| -------------- | ----------- | ------------------------------------------------- |
-| `/games`       | rw          | This is the path ps3netsrv will serve to clients. |
-
-### Ports
-
-Here is the list of ports used by the container. They can be mapped to the host
-via the `-p` parameter (one per port mapping). Each mapping is defined in the
-following format: `<HOST_PORT>:<CONTAINER_PORT>`. The port number inside the
-container cannot be changed, but you are free to use any port on the host side.
-
-| Port  | Mapping to host | Description              |
-| ----- | --------------- | ------------------------ |
-| `38008` | Mandatory       | Port used for ps3netsrv. |
-
-### Changing Parameters of a Running Container
-
-As seen, environment variables, volume mappings and port mappings are specified
-while creating the container.
-
-The following steps describe the method used to add, remove or update
-parameter(s) of an existing container. The generic idea is to destroy and
-re-create the container:
-
-1. Stop the container (if it is running):
-
-```
-docker stop ps3netsrv
-```
-
-2. Remove the container:
-
-```
-docker rm ps3netsrv
-```
-
-3. Create/start the container using the `docker run` command, by adjusting
-   parameters as needed.
-
-## Docker Compose File
-
-Here is an example of a `docker-compose.yml` file that can be used with
-[Docker Compose](https://docs.docker.com/compose/overview/).
-
-Make sure to adjust according to your needs. Note that only mandatory network
-ports are part of the example.
-
+## Docker Compose example
 ```yaml
-version: "3"
 services:
-  ps3netsrv:
-    image: shawly/ps3netsrv:latest
-    environment:
-      TZ: Europe/Berlin
-      USER_ID: 38008  # change this to the uid of the user that owns your games folder
-      GROUP_ID: 38008  # change this to the gid of the user that owns your games folder
+  ps3netsrv-go:
+    image: ghcr.io/cryptofyre/docker-ps3netsrv-go:latest
+    restart: unless-stopped
     ports:
       - "38008:38008"
     volumes:
-      - "$HOME/ps3games:/games:rw"
+      - /path/to/games:/srv/ps3data
+    environment:
+      PS3NETSRV_ALLOW_WRITE: "true"
+      PS3NETSRV_STRICT_ROOT: "true"
 ```
 
-## Docker Image Update
-
-If the system on which the container runs doesn't provide a way to easily update
-the Docker image, the following steps can be followed:
-
-1. Fetch the latest image:
-
-```
-docker pull shawly/ps3netsrv
-```
-
-2. Stop the container:
-
-```
-docker stop ps3netsrv
-```
-
-3. Remove the container:
-
-```
-docker rm ps3netsrv
-```
-
-4. Start the container using the `docker run` command.
-
-## User/Group IDs
-
-When using data volumes (`-v` flags), permissions issues can occur between the
-host and the container. For example, the user within the container may not
-exists on the host. This could prevent the host from properly accessing files
-and folders on the shared volume.
-
-To avoid any problem, you can specify the user the application should run as.
-
-This is done by passing the user ID and group ID to the container via the
-`USER_ID` and `GROUP_ID` environment variables.
-
-To find the right IDs to use, issue the following command on the host, with the
-user owning the data volume on the host:
-
-    id <username>
-
-Which gives an output like this one:
-
-```
-uid=1000(myuser) gid=1000(myuser) groups=1000(myuser),4(adm),24(cdrom),27(sudo),46(plugdev),113(lpadmin)
-```
-
-The value of `uid` (user ID) and `gid` (group ID) are the ones that you should
-be given the container.
+## User / permissions
+The container runs as `ps3netsrv` (uid/gid 1000). If your host data is owned by a different user, either:
+- run with `--user <uid>:<gid>`, or
+- adjust ownership/ACLs on the host path.
 
 ## Troubleshooting
+- Ensure your games directory includes `PS3ISO` and/or `GAMES`.
+- If clients cannot connect, verify port mapping and any `PS3NETSRV_CLIENT_WHITELIST` value.
+- For performance: use wired LAN and SSD/NVMe storage; decrypted ISOs reduce CPU load.
 
-First things first, if you have any kind of issue please try to use [the standalone version](https://github.com/aldostools/webMAN-MOD/tree/master/_Projects_/ps3netsrv/bins) of ps3netsrv and try to reproduce the issue. If you have the same issue with the standalone version, it's better to create an issue on the [webMAN-MOD repo](https://github.com/aldostools/webMAN-MOD/issues).
-
-### webMAN-MOD can't see or read games from ps3netsrv
-
-There are several possible causes for this issue. I will use the user `bob` who has his backups saved in his home folder under `/home/bob/ps3games` as an example.
-
-#### A. Your folder structure is incorrect
-
-ps3netsrv or rather webMAN-MOD wants to read their games from a certain folder structure, so your volume needs at least the folder `PS3ISO` and `GAMES`.
-Therefore it is necessary for bob to create the folders `/home/bob/ps3games/PS3ISO` and `/home/bob/ps3games/GAMES` as well. ISO files go into the `PS3ISO` folder and extracted games in folder format go into the `GAMES` folder. So now `bob` has to mount `/home/bob/ps3games` to the `/games` volume within the container. Like this:
-
-```
-docker run -d \
-    --name=ps3netsrv \
-    -p 38008:38008 \
-    -v $HOME/ps3games:/games:rw \
-    shawly/ps3netsrv
-```
-
-#### B. Your permissions are incorrect
-
-ps3netsrv does not have root permissions within the container, it runs as user `ps3netsrv` which by default has the UID 1000 and the GID 1000.  
-There are two solutions for this issue, `bob` could change the ownership of his `ps3games` folder to 1000:1000, which is a bad idea because he will lose access if he does not have the UID 1000.
-
-The better solution is to override the `ps3netsrv` user's UID and GID, this can be done with the environment variables `USER_ID` and `GROUP_ID`.  
-`bob` has the UID 10002 and his `bob` group has the GID 10003 so we need to change the environment variables, like this:
-
-```
-docker run -d \
-    --name=ps3netsrv \
-    -p 38008:38008 \
-    -v $HOME/ps3games:/games:rw \
-    -e USER_ID=10002 \
-    -e GROUP_ID=10003 \
-    shawly/ps3netsrv
-```
-
-#### C. ps3netsrv standalone works but your container doesn't
-
-Make sure to start the ps3netsrv standalone as normal user, not as root user or with sudo. If it works for your root user but not for a non-root user, then go back to troubleshooting step **B**. If the standalone works with both normal users and root but the container doesn't, check the ownership, see the next point **D**.
-
-#### D. All of the above stuff wasn't causing the issue
-
-Alright then, please execute `ls -l path/to/your/ps3games/folder` and `docker exec CONTAINERNAME ls -l /games` (replace **CONTAINERNAME** with the actual name of your container). It should look like this:
-
-```
-bob@nas:~$ ls -l /home/bob/ps3games
-drwxrwx--- 119 bob bob 119 Mar  4  2019 GAMES
-drwxrwx---   7 bob bob   7 Jun 21  2019 PS3ISO
-```
-
-```
-bob@nas:~$ docker exec ps3netsrv ls -l /games
-drwxrwx--- 119 ps3netsrv ps3netsrv 119 Mar  4  2019 GAMES
-drwxrwx---   7 ps3netsrv ps3netsrv   7 Jun 21  2019 PS3ISO
-```
-
-If the folders aren't owned by ps3netsrv or you are not seeing the GAMES and PS3ISO folders, repeat the troubleshooting steps **A** and **B** above.
-If it still doesn't work, you can create a help request with the secret code "SSBoYXZlIHJlYWQsIGZvbGxvd2VkIGFuZCB0cmllZCBldmVyeSB0cm91Ymxlc2hvb3Rpbmcgc3RlcCwgYnV0IGl0IHN0aWxsIGRvZXNuJ3Qgd29yaywgcGxlYXNlIGhlbHAgbWUu".
-
-### The container won't start or webMAN-MOD can't connect to the container
-
-On some systems like Synology NAS systems the default port of ps3netsrv `38008` is in use already, so you simply need to change the host port to something else on the container and change the port within webMAN-MOD's webinterface to the same port.
-If the port is not the issue, it might be the latest build of ps3netsrv, try out some older tags of my Docker image as well as [the standalone version](https://github.com/aldostools/webMAN-MOD/tree/master/_Projects_/ps3netsrv/bins) of ps3netsrv.
-
-### webMAN-MOD has access to ps3netsrv but when mounting games they show as corrupted
-
-This is an issue related to the latest UnRAID version, the splitting mechanism of shfs seems to be incompatible with ps3netsrv, take a look at [this issue](https://github.com/aldostools/webMAN-MOD/issues/333), at the bottom you can find some workarounds.
-If you do not have UnRAID but some other filesystem please test [the standalone version](https://github.com/aldostools/webMAN-MOD/tree/master/_Projects_/ps3netsrv/bins) of ps3netsrv before creating an issue here.
-If the issue also happens with the ps3netsrv standalone on a standard ext4 filesystem, your games are likely to be corrupted or you don't own the files **within** your games folders, check permissions and/or make new backups.
-
-## Support or Contact
-
-Still have trouble with the container or have questions? Please
-[create a new issue]. The secret code for help issues is hidden in the troubleshooting steps, read them carefully. If you do not add the help code to your issue, I will have to close it sorry.
-
-[create a new issue]: https://github.com/shawly/docker-ps3netsrv/issues
+## Support
+Issues and PRs: https://github.com/cryptofyre/docker-ps3netsrv-go
