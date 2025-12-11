@@ -9,7 +9,7 @@ Container image for [xakep666/ps3netsrv-go](https://github.com/xakep666/ps3netsr
 This fork builds the upstream Go binary directly (no s6 overlay, no legacy C code) and publishes multi-arch images to GHCR.
 
 ## What’s inside
-- Built from upstream `ps3netsrv-go` (default ref: `main`; tag builds use the tag).
+- Built from upstream `ps3netsrv-go` (default ref: `master`; tag builds use the tag).
 - Static binary (`CGO_ENABLED=0`) with defaults tuned for container use.
 - Runs as non-root user `ps3netsrv` (uid/gid 1000) by default.
 - Multi-arch: `linux/amd64`, `linux/arm64`, `linux/arm/v7`.
