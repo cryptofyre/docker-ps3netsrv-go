@@ -26,7 +26,7 @@ Images are published to `ghcr.io/cryptofyre/docker-ps3netsrv-go`.
 docker run -d \
   --name=ps3netsrv-go \
   -p 38008:38008 \
-  -v /path/to/games:/srv/ps3data \
+  -v /path/to/games:/games \
   ghcr.io/cryptofyre/docker-ps3netsrv-go:latest
 ```
 
@@ -35,7 +35,7 @@ The container entrypoint is `ps3netsrv-go server`. Common settings (all are pass
 
 | Env var | Description | Default |
 | --- | --- | --- |
-| `PS3NETSRV_ROOT` | Root directory served to clients | `/srv/ps3data` |
+| `PS3NETSRV_ROOT` | Root directory served to clients | `/games` |
 | `PS3NETSRV_LISTEN_ADDR` | Listen address/port | `0.0.0.0:38008` |
 | `PS3NETSRV_ALLOW_WRITE` | Enable write operations | `true` |
 | `PS3NETSRV_STRICT_ROOT` | Protect against path traversal/symlinks | `true` |
@@ -47,7 +47,7 @@ The container entrypoint is `ps3netsrv-go server`. Common settings (all are pass
 The upstream also supports a config file (`config.ini`) discovered as described in the upstream README.
 
 ## Volumes and ports
-- Volume: `/srv/ps3data` (map your games here; include `PS3ISO`/`GAMES` folders, etc.).
+- Volume: `/games` (map your games here; include `PS3ISO`/`GAMES` folders, etc.).
 - Port: `38008/TCP` (map with `-p 38008:38008` or change `PS3NETSRV_LISTEN_ADDR`).
 
 ## Docker Compose example
@@ -59,7 +59,7 @@ services:
     ports:
       - "38008:38008"
     volumes:
-      - /path/to/games:/srv/ps3data
+      - /path/to/games:/games
     environment:
       PS3NETSRV_ALLOW_WRITE: "true"
       PS3NETSRV_STRICT_ROOT: "true"

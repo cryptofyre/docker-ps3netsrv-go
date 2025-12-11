@@ -25,21 +25,21 @@ RUN GOOS="${TARGETOS:-linux}" \
 
 FROM alpine:3.21
 
-WORKDIR /srv/ps3data
+WORKDIR /games
 
 RUN apk add --no-cache ca-certificates tzdata && \
     addgroup -g 1000 ps3netsrv && \
     adduser -D -H -u 1000 -G ps3netsrv ps3netsrv && \
-    chown ps3netsrv:ps3netsrv /srv/ps3data
+    chown ps3netsrv:ps3netsrv /games
 
 COPY --from=builder /out/ps3netsrv-go /usr/local/bin/ps3netsrv-go
 
-ENV PS3NETSRV_ROOT=/srv/ps3data \
+ENV PS3NETSRV_ROOT=/games \
     PS3NETSRV_LISTEN_ADDR=0.0.0.0:38008 \
     PS3NETSRV_STRICT_ROOT=true \
     PS3NETSRV_ALLOW_WRITE=true
 
-VOLUME ["/srv/ps3data"]
+VOLUME ["/games"]
 
 EXPOSE 38008
 
