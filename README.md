@@ -1,4 +1,4 @@
-# Docker image for ps3netsrv-go
+![ps3netsrv-go banner](resources/banner.png)
 
 [![Build status](https://github.com/cryptofyre/docker-ps3netsrv-go/actions/workflows/docker.yml/badge.svg?branch=main)](https://github.com/cryptofyre/docker-ps3netsrv-go/actions/workflows/docker.yml)
 
