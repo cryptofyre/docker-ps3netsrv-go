@@ -60,5 +60,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             GO_VERSION=${{ env.GO_VERSION }}
-            PS3NETSRV_GO_REF=${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
+            PS3NETSRV_GO_REF=${{ github.ref_type == 'tag' && github.ref_name || 'master' }}
 
